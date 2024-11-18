@@ -2,56 +2,42 @@ import requests
 from bs4 import BeautifulSoup
 import time
 
-headers = { #Ваши заголовки
-    "User-Agent": ""
+# Ваши заголовки
+headers = {
+
 }
 
-#Стандартный запрос на главную страницу сайта
-url = "https://yummyanime.tv/2top-100/"
-response = requests.get(url, headers=headers)
-bs = BeautifulSoup(response.text, 'lxml')
+response = requests.get("https://yummyanime.tv/2top-100/")
+bs = BeautifulSoup(response.text, "lxml")
 
 def card_links():
     anime_cards = bs.find_all("div", class_="movie-item")
     for anime_card in anime_cards:
-        anime_card_link = "https://yummyanime.tv" + anime_card.find("a", class_="movie-item__link").get("href")
-        yield anime_card_link #Вытаскиваем ссылки на карточки
-
+        anime_card_link = "https://yummyanime.tv/" + anime_card.find("a", class_="movie-item__link").get("href")
+        response_card = requests.get(anime_card_link)
+        if response_card.status_code <= 200:
+            yield anime_card_link
+        else:
+            continue
 def all_info():
+    k = 0
     for link in card_links():
-        k = 0
-        resp = requests.get(link, headers=headers) #Запрос на страницу карточки аниме
+
+        resp = requests.get(link, headers=headers)
         soup = BeautifulSoup(resp.text, "lxml")
-        time.sleep(1) #Чтобы не нагружать сайт, поставим задержку в 1 секунду
+        time.sleep(1)
 
-        title = soup.find("div", class_="inner-page__title").find("h1").text #Нашли название аниме
+        title = soup.find("div", class_="inner-page__title").find("h1").text
 
-        #Нашли имя режиссёра
-        ul = soup.find("ul", class_="inner-page__list")
-        li_director = ul.find_all("li")[2]
-        director = li_director.find_all("span")[1].text
+        director = soup.find("ul", class_="inner-page__list").find_all("li")[2].find_all("span")[1].text
 
-        #Нашли рейтинг
-        li_rating = ul.find_all("li")[3]
-        rating = li_rating.find_all("span")[1].text + " / 10"
+        rating = soup.find("ul", class_="inner-page__list").find_all("li")[3].find_all("span")[1].text + "/10"
 
-        #Нашли жанры
-        li_genre = ul.find_all("li")[4]
-        span_genre = li_genre.find_all("span")[1]
-        a_genres = span_genre.find_all("a")
-        #Перебираем каждый эллемент в текст, чтобы избавиться от тегов <a> и получить чистый текст
-        array_genres = [a_genre.text for a_genre in a_genres]
-        genres = ', '.join(array_genres) #Преобразовываем список жанров в строку
+        unlinked_array_genres = soup.find("ul", class_="inner-page__list").find_all("li")[4].find_all("a")
+        array_genres = [genre.text for genre in unlinked_array_genres]
+        genres = ', '.join(array_genres)
 
-        yield title, director, rating, genres
+        k += 1
+        print(f"{k}. {title}\n{director}\n{rating}\n{genres}\n")
 
-        #print(f"{k}, Название: {title}, Директор: {director}, Рейтинг: {rating}, Жанр: {genres}\n")
-
-
-
-
-
-
-
-
-
+all_info()
